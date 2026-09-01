@@ -6,12 +6,12 @@ The UI appeared as unstyled HTML (default fonts, blue links, bullet navigation) 
 
 ### Root cause
 
-The Next.js **development server cache (`.next/`) became stale/corrupted** after long-running sessions, multiple restarts, or overlapping dev servers.
+The Next.js **development server cache (`.next/`) became stale/corrupted** after long-running sessions, multiple restarts, overlapping dev servers, or **`npm run build` running while `npm run dev` is still active**.
 
 Symptoms observed:
 
 1. HTML referenced `/_next/static/css/app/layout.css?v=...` → **HTTP 404**
-2. The actual compiled CSS file on disk had a different hashed name
+2. The actual compiled CSS file on disk had a different hashed name (or was removed by a concurrent build)
 3. Terminal showed webpack/RSC errors such as:
    - `__webpack_modules__[moduleId] is not a function`
    - `SegmentViewNode` React Client Manifest errors
@@ -93,9 +93,11 @@ Or manually:
 
 1. Open Network tab
 2. Reload the page
-3. Find the CSS request (e.g. `/_next/static/css/app/layout.css?...`)
+3. Find the CSS request (e.g. `/_next/static/css/app/layout.css?...` or a hashed `/_next/static/css/*.css`)
 4. Status must be **200** (not 404)
-5. Response size should be **> 50KB**
+5. Response size should be **> 40KB** and include tokens such as `bg-sidebar` and `brand-lime`
+
+**HTTP 200 on the HTML document alone is not sufficient** — an unstyled page still returns 200 when CSS fails to load.
 
 ### Terminal check
 
@@ -140,7 +142,8 @@ All returned HTTP 200 with CSS linked and Tailwind classes in HTML.
 1. **Do not remove** `import "./globals.css"` from `src/app/layout.tsx`
 2. **Do not add** a Tailwind v3 `tailwind.config.js` — this project uses **Tailwind v4** via `@import "tailwindcss"`
 3. **Do not run** multiple `npm run dev` instances simultaneously
-4. **Do not say "fixed"** without verifying CSS returns HTTP 200 in the browser
+4. **Stop the dev server before** `npm run build`; restart with `npm run dev:clean` afterward if developing locally
+5. **Do not say "fixed"** without verifying CSS returns HTTP 200 in the browser
 5. If UI looks unstyled after long dev sessions, **clear `.next` first** before changing code
 6. Preserve existing design tokens in `globals.css` — do not replace the file blindly
 7. After `npm run build`, restart `npm run dev` if styles appear broken in development
