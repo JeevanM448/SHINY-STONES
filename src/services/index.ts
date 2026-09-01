@@ -1,17 +1,35 @@
 /**
- * Service layer — swap mock implementations for Supabase/API later without changing UI.
+ * Service layer registry — swap mock vs production without changing UI.
+ *
+ * Mock (default): in-memory store + localStorage via src/services/mock/*
+ * Production: Supabase/API via src/services/supabase/* (stubs until backend phases complete)
  */
+import { getServiceMode } from "./config";
 import type {
+  ActivityService,
+  AIService,
+  AuthService,
   AutomationService,
   ContactService,
   CustomerService,
+  DashboardService,
   DealService,
   EmailService,
   FollowUpService,
   NotificationService,
   PurchaseOrderService,
+  ReportService,
+  SettingsService,
   UserService,
 } from "./interfaces";
+import { MockAIService } from "./mock/aiServiceAdapter";
+import { MockActivityService } from "./mock/activityService";
+import { MockAuthService } from "./mock/authService";
+import {
+  MockDashboardService,
+  MockReportService,
+  MockSettingsService,
+} from "./mock/aggregatedServices";
 import * as automation from "./mock/automationService";
 import * as contacts from "./mock/contactService";
 import * as customers from "./mock/customerService";
@@ -21,6 +39,29 @@ import * as followUps from "./mock/followUpService";
 import * as notifications from "./mock/notificationService";
 import * as purchaseOrders from "./mock/poService";
 import * as users from "./mock/userService";
+import {
+  supabaseActivityService,
+  supabaseAIService,
+  supabaseAuthService,
+  supabaseAutomationService,
+  supabaseContactService,
+  supabaseCustomerService,
+  supabaseDashboardService,
+  supabaseDealService,
+  supabaseEmailService,
+  supabaseFollowUpService,
+  supabaseNotificationService,
+  supabasePurchaseOrderService,
+  supabaseReportService,
+  supabaseSettingsService,
+  supabaseUserService,
+} from "./supabase/stubServices";
+
+export { getServiceMode, isMockMode, isProductionMode } from "./config";
+export type * from "./interfaces";
+export type * from "./types";
+
+// --- Mock implementations ---
 
 export class MockCustomerService implements CustomerService {
   getCustomers = customers.getCustomers;
@@ -99,24 +140,76 @@ export class MockUserService implements UserService {
   deactivateUser = users.deactivateUser;
 }
 
-export const customerService: CustomerService = new MockCustomerService();
-export const contactService: ContactService = new MockContactService();
-export const dealService: DealService = new MockDealService();
-export const emailService: EmailService = new MockEmailService();
-export const purchaseOrderService: PurchaseOrderService = new MockPurchaseOrderService();
-export const followUpService: FollowUpService = new MockFollowUpService();
-export const automationService: AutomationService = new MockAutomationService();
-export const notificationService: NotificationService = new MockNotificationService();
-export const userService: UserService = new MockUserService();
+const mockServices: {
+  customer: CustomerService;
+  contact: ContactService;
+  deal: DealService;
+  email: EmailService;
+  purchaseOrder: PurchaseOrderService;
+  followUp: FollowUpService;
+  automation: AutomationService;
+  notification: NotificationService;
+  user: UserService;
+  settings: SettingsService;
+  dashboard: DashboardService;
+  report: ReportService;
+  activity: ActivityService;
+  auth: AuthService;
+  ai: AIService;
+} = {
+  customer: new MockCustomerService(),
+  contact: new MockContactService(),
+  deal: new MockDealService(),
+  email: new MockEmailService(),
+  purchaseOrder: new MockPurchaseOrderService(),
+  followUp: new MockFollowUpService(),
+  automation: new MockAutomationService(),
+  notification: new MockNotificationService(),
+  user: new MockUserService(),
+  settings: new MockSettingsService(),
+  dashboard: new MockDashboardService(),
+  report: new MockReportService(),
+  activity: new MockActivityService(),
+  auth: new MockAuthService(),
+  ai: new MockAIService(),
+} as const;
 
-export const services = {
-  customer: customerService,
-  contact: contactService,
-  deal: dealService,
-  email: emailService,
-  purchaseOrder: purchaseOrderService,
-  followUp: followUpService,
-  automation: automationService,
-  notification: notificationService,
-  user: userService,
-};
+const productionServices: typeof mockServices = {
+  customer: supabaseCustomerService,
+  contact: supabaseContactService,
+  deal: supabaseDealService,
+  email: supabaseEmailService,
+  purchaseOrder: supabasePurchaseOrderService,
+  followUp: supabaseFollowUpService,
+  automation: supabaseAutomationService,
+  notification: supabaseNotificationService,
+  user: supabaseUserService,
+  settings: supabaseSettingsService,
+  dashboard: supabaseDashboardService,
+  report: supabaseReportService,
+  activity: supabaseActivityService,
+  auth: supabaseAuthService,
+  ai: supabaseAIService,
+} as const;
+
+function resolveServices() {
+  return getServiceMode() === "production" ? productionServices : mockServices;
+}
+
+export const services = resolveServices();
+
+export const customerService = services.customer;
+export const contactService = services.contact;
+export const dealService = services.deal;
+export const emailService = services.email;
+export const purchaseOrderService = services.purchaseOrder;
+export const followUpService = services.followUp;
+export const automationService = services.automation;
+export const notificationService = services.notification;
+export const userService = services.user;
+export const settingsService = services.settings;
+export const dashboardService = services.dashboard;
+export const reportService = services.report;
+export const activityService = services.activity;
+export const authService = services.auth;
+export const aiService = services.ai;

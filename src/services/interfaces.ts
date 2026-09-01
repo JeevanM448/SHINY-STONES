@@ -1,4 +1,5 @@
 import type {
+  Activity,
   AutomationWorkflow,
   Contact,
   Customer,
@@ -21,6 +22,17 @@ import type {
   CreateUserInput,
   SearchResult,
 } from "@/store/helpers";
+import type {
+  ActivityFilters,
+  AIClassification,
+  AuthSession,
+  DashboardMetrics,
+  DealInsight,
+  PipelineStageSummary,
+  POExtractionResult,
+  RevenueChartPoint,
+  TeamPerformanceRow,
+} from "./types";
 
 export interface CustomerService {
   getCustomers(): Promise<Customer[]>;
@@ -107,7 +119,64 @@ export interface SettingsService {
   search(query: string): Promise<SearchResult[]>;
 }
 
+export interface DashboardService {
+  getDashboardMetrics(): Promise<DashboardMetrics>;
+  getPipeline(): Promise<PipelineStageSummary[]>;
+  getAttentionDeals(): Promise<Deal[]>;
+  getActivities(filters?: ActivityFilters): Promise<Activity[]>;
+  getTeamPerformance(): Promise<TeamPerformanceRow[]>;
+  getRevenueChartData(): Promise<RevenueChartPoint[]>;
+}
+
+export interface ReportService {
+  getReportMetrics(): Promise<DashboardMetrics>;
+  getTeamPerformance(): Promise<TeamPerformanceRow[]>;
+  getRevenueChartData(): Promise<RevenueChartPoint[]>;
+  getPipeline(): Promise<PipelineStageSummary[]>;
+}
+
+export interface ActivityService {
+  getActivities(filters?: ActivityFilters): Promise<Activity[]>;
+}
+
+export interface AuthService {
+  signIn(email: string, password: string): Promise<AuthSession>;
+  signOut(): Promise<void>;
+  getSession(): Promise<AuthSession | null>;
+  getCurrentUser(): Promise<User | null>;
+}
+
+export interface AIService {
+  classifyEmail(
+    email: Pick<EmailThread, "subject" | "preview" | "messages">
+  ): Promise<AIClassification>;
+  summarizeEmail(
+    email: Pick<EmailThread, "subject" | "preview" | "messages">
+  ): Promise<string>;
+  generateReply(
+    email: Pick<EmailThread, "from" | "subject" | "messages" | "aiIntent">,
+    senderName?: string
+  ): Promise<string>;
+  recommendFollowUp(
+    email: Pick<EmailThread, "subject" | "preview" | "messages">
+  ): Promise<{ title: string; priority: "low" | "medium" | "high" }>;
+  extractPOFields(input: {
+    poNumber?: string;
+    customerName?: string;
+    amount?: number;
+    deliveryDate?: string;
+    items?: { name: string; quantity: number; unitPrice: number }[];
+  }): Promise<POExtractionResult>;
+  getDealInsight(deal: {
+    probability: number;
+    lastActivity: string;
+    stage: string;
+    attentionReason?: string;
+  }): Promise<DealInsight>;
+}
+
 export type {
+  Activity,
   Contact,
   FollowUp,
   PurchaseOrder,
@@ -118,4 +187,9 @@ export type {
   CreatePOInput,
   CreateWorkflowInput,
   CreateUserInput,
+  AIClassification,
+  AuthSession,
+  DashboardMetrics,
+  DealInsight,
+  POExtractionResult,
 };
